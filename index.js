@@ -1,31 +1,32 @@
 const axios = require('axios')
 const fs = require('fs')
 const _ = require('lodash')
+require('array-foreach-async')
 
 const endpoint = 'https://api.trip2.jp/ex/tokyo/v1.0/json'
 
-// const list = JSON.parse(fs.readFileSync('./list.json', 'utf8'))
-const list = JSON.parse(fs.readFileSync('./listMini.json', 'utf8'))
+const list = JSON.parse(fs.readFileSync('./list.json', 'utf8'))
+// const list = JSON.parse(fs.readFileSync('./listMini.json', 'utf8'))
 
 const allTimeDataBase = {}
 
 
-async function main() {
-  list.forEach(async (src, indexSrc) => {
+const main = async () => {
+  await list.forEachAsync(async (src, indexSrc) => {
     console.log(src)
     allTimeDataBase[src] = []
     // const arr = []
-    await list.forEach(async (dst, indexDst) => {
+    await list.forEachAsync(async (dst, indexDst) => {
       console.log(`${src} => ${dst}`)
       if(indexSrc === indexDst) return
 
-      axios.get(endpoint, {
+      await axios.get(endpoint, {
         params: {
           src,
           dst,
           key: 'test'
         }
-      }).then(response => {
+      }).then(async (response) => {
         // console.log(response.data)
         // console.log(JSON.stringify(response.data, null, 2))
         const time = response.data.ways.reduce((acc, way) => {
@@ -33,10 +34,12 @@ async function main() {
           return acc + way.min
         }, 0)
         // console.log(time)
-        allTimeDataBase[src] = { src, dst, time }
+        allTimeDataBase[src].push({ src, dst, time })
+        
       })
     })
   })
+  return 'end'
 }
 // console.log('allTimeDataBase')
 
@@ -45,7 +48,6 @@ async function main() {
 //   dst: '松戸',
 //   time: 50
 // }
-
 
 function getTime(src, dst) {
   return axios.get(endpoint, {
@@ -74,3 +76,12 @@ function getTime(src, dst) {
 //     }, 0)
 //     console.log(time)
 //   })
+
+
+(function () {
+  main().then(v => {
+    console.log(v)
+    console.log(JSON.stringify(allTimeDataBase, null, 2))
+    fs.writeFileSync('./output.json', JSON.stringify(allTimeDataBase, null, 2))
+  })
+})()
